@@ -241,7 +241,7 @@ module.exports = function(grunt) {
     });
 
     grunt.registerTask('default', [
-        'clean', 'concat', 'uglify', 'less', 'postcss', 'cssmin', 'copy', 'replace', 'watch'
+        'clean', 'concat', 'uglify', 'less', 'postcss', 'cssmin', 'copy', 'watch'
     ]);
 
     // grunt.registerTask('build', [
