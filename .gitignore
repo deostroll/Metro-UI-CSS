@@ -57,8 +57,8 @@ validation-status.json
 # Folders to ignore
 bower_components
 node_modules
-build
-docs
-test
+build/*
+docs/*
+test/*
 metro.nuspec
 web

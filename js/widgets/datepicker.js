@@ -108,7 +108,7 @@ $.widget("metro.datepicker", {
             maxDate: o.maxDate,
             scheme: o.scheme,
             dayClick: function(d, d0){
-                console.log(d, d0);
+                // console.log(d, d0);
                 _calendar.calendar('setDate', d0);
                 that.element.children("input[type=text]").val(d);
                 // debugger;
@@ -178,7 +178,7 @@ $.widget("metro.datepicker", {
 
       if($.isArray(date)) {
           //TODO: handle multi-selected dates
-      }     
+      }
 
       //TODO: test for IE support
 
