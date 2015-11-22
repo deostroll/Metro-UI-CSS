@@ -244,6 +244,8 @@ module.exports = function(grunt) {
         'clean', 'concat', 'uglify', 'less', 'postcss', 'cssmin', 'copy', 'watch'
     ]);
 
+    grunt.registerTask('build',['clean', 'concat', 'uglify', 'less', 'postcss', 'cssmin', 'copy'] );
+
     // grunt.registerTask('build', [
     //     'clean', 'concat', 'uglify', 'less', 'postcss', 'cssmin', 'copy', 'watch'
     // ]);
