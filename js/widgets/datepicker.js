@@ -1,7 +1,7 @@
 $.widget("metro.datepicker", {
 
-    version: "3.0.0",
-    //test-commen3
+    version: "3.0.14",
+
     options: {
         format: "yyyy.mm.dd",
         preset: false,
