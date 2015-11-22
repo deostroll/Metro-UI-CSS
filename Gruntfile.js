@@ -1,13 +1,21 @@
 module.exports = function(grunt) {
 
-    "use strict";
-
     require('load-grunt-tasks')(grunt);
-
+    var path = require('path');
     var autoprefixer = require('autoprefixer-core');
 
+    var config = {
+      path: 'web/',
+      port: 2586
+    };
+
+    var bower = grunt.file.readJSON('bower.json');
+
     grunt.initConfig({
+        web: config,
+        bower: bower,
         pkg: grunt.file.readJSON('package.json'),
+
         banner: '/*!\n' +
                 ' * Metro UI CSS v<%= pkg.version %> (<%= pkg.homepage %>)\n' +
                 ' * Copyright 2012-<%= grunt.template.today("yyyy") %> <%= pkg.author %>\n' +
@@ -25,7 +33,8 @@ module.exports = function(grunt) {
         clean: {
             build: ['build/js', 'build/css', 'build/fonts'],
             docs: ['docs/css/metro*.css', 'docs/js/metro*.js'],
-            compiled_html: ['.compiled_html']
+            compiled_html: ['.compiled_html'],
+            web: ['web']
         },
 
         concat: {
@@ -93,7 +102,7 @@ module.exports = function(grunt) {
         postcss: {
             options: {
                 processors: [
-                    autoprefixer({ browsers: ['> 5%'] }).postcss
+                    autoprefixer({ browsers: ['> 5%'] })
                 ]
             },
             dist: { src: 'build/css/*.css' }
@@ -127,7 +136,7 @@ module.exports = function(grunt) {
                 src: 'fonts/*',
                 dest: 'build/',
                 expand: true
-            },            
+            },
             docs_css_core: {
                 src: 'build/css/<%= pkg.name %>.css',
                 dest: 'docs/css/<%= pkg.name %>.css'
@@ -151,38 +160,83 @@ module.exports = function(grunt) {
             docs_js: {
                 src: 'build/js/<%= pkg.name %>.js',
                 dest: 'docs/js/<%= pkg.name %>.js'
+            },
+            //copy all web assets
+            web: {
+              src: '<%= bower.main %>',
+              dest: '<%= web.path %>'
+            },
+            //copy our working js file
+            htmljs: {
+              files: [
+                {
+                  expand: true,
+                  cwd: 'html',
+                  dest: '<%= web.path %>',
+                  src: 'main.js'
+                }
+              ]
+            },
+            //copy the built js file
+            buildjs: {
+              src: 'build/js/metro.js',
+              dest: '<%= web.path %>'
             }
         },
 
         replace: {
-            dist: {
-                options: {
-                    patterns: [
-                        {
-                            match: 'adsense',
-                            replacement: '<%= grunt.file.read(".replace/google-adsense-block.txt") %>'
-                        },
-                        {
-                            match: 'hit',
-                            replacement: '<%= grunt.file.read(".replace/hit-ua-counter.txt") %>'
-                        }
-                    ]
-                },
-                files: [
-                    {
-                        expand: true,
-                        flatten: true,
-                        src: ['docs/*.html'], dest: '.compiled_html/'
-                    }
-                ]
-            }
+
         },
 
         watch: {
             scripts: {
                 files: ['js/*.js', 'js/utils/*.js', 'js/widgets/*js'],
                 tasks: ['concat', 'uglify', 'copy:docs_js']
+            },
+            //watch - files in web folder
+            web: {
+              files: ['<%= web.path %>/**/*.{html,js}'],
+              options: {
+                livereload: true
+              }
+            },
+            //watch - changes in our working js file
+            js: {
+              files: [ 'html/main.js'],
+              tasks: [ 'copy:htmljs' ]
+            },
+            //watch changes in our working html file
+            html : {
+              files: [ 'html/index.html'],
+              tasks: ['metrofy']
+            },
+            //watch - changes in the built metro.js file
+            build: {
+              files: ['js/**/*.js'],
+              tasks: ['concat', 'copy:buildjs']
             }
+        },
+        //serve it up
+        connect: {
+          web: {
+            options: {
+              livereload: true,
+              port: '<%= web.port %>',
+              middleware: function(connect){
+                var app = connect();
+                var _static = require('./node_modules/grunt-contrib-connect/node_modules/serve-static');
+                app.use('/bower_components', _static('./bower_components'))
+                app.use('/', _static('web'));
+                return [ app ];
+              },
+              open: true
+            },
+          }
+        },
+        wiredep: {
+          html: {
+            src: 'html/index.html'
+          }
         }
     });
 
@@ -190,4 +244,65 @@ module.exports = function(grunt) {
         'clean', 'concat', 'uglify', 'less', 'postcss', 'cssmin', 'copy', 'replace', 'watch'
     ]);
 
+    // grunt.registerTask('build', [
+    //     'clean', 'concat', 'uglify', 'less', 'postcss', 'cssmin', 'copy', 'watch'
+    // ]);
+
+    grunt.registerTask('serve',[
+      'clean',
+      'concat',
+      'uglify',
+      'less',
+      'postcss',
+      'cssmin',
+      'copy',
+      'metrofy',
+      'connect',
+      'watch'
+    ]);
+
+    grunt.registerTask('metrofy',function() {
+      var file = grunt.file.read('html/index.html');
+      var lines = file.split('\n');
+      var strings = {
+        css: '<!-- metro:css -->',
+        js: '<!-- metro:js -->'
+      };
+      // console.log(lines[0]);
+      var result = [];
+      var cssDone = false, allDone = false;
+      lines.forEach(function(ln){
+        if(!allDone) {
+          if(!cssDone) {
+            if(ln.indexOf(strings.css) > -1) {
+                var cssFiles = bower.main.filter(function(s){ return s.indexOf('.css') > -1; });
+                result.push(ln);
+                cssFiles.forEach(function(css){
+                  var script = '<link rel="stylesheet" href="' + css + '"/>';
+                  result.push(ln.replace(strings.css, script));
+                });
+                cssDone = true;
+                return;
+            }
+          }
+          else {
+            //js files
+            if(ln.indexOf(strings.js) > -1) {
+              var jsFiles = bower.main.filter(function(s){ return s.indexOf('.js') > -1; });
+              result.push(ln);
+              jsFiles.forEach(function(js){
+                var script = '<script type="text/javascript" src="' + js + '"></script>';
+                result.push(ln.replace(strings.js, script));
+              });
+              allDone = true;
+              return;
+            }
+          }
+        }
+        result.push(ln);
+      });
+      // console.log(path.join)
+      var writeFile = path.join(grunt.config('web').path, 'index.html');
+      grunt.file.write(writeFile, result.join('\n'));
+    });
 };
